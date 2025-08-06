@@ -1,5 +1,7 @@
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import requests
 import telebot
 from dotenv import load_dotenv
@@ -55,13 +57,15 @@ def get_weather(message):
         humidity = current_data["main"]["humidity"]
         pressure = current_data["main"]["pressure"]
 
-        sunrise = datetime.fromtimestamp(current_data["sys"]["sunrise"]).strftime('%H:%M')
-        sunset = datetime.fromtimestamp(current_data["sys"]["sunset"]).strftime('%H:%M')
+        tz = ZoneInfo("Asia/Yekaterinburg")
+        sunrise = datetime.fromtimestamp(current_data["sys"]["sunrise"], tz=tz).strftime('%H:%M')
+        sunset = datetime.fromtimestamp(current_data["sys"]["sunset"], tz=tz).strftime('%H:%M')
+
 
         # Прогноз на ближайшие 24 часа (8 интервалов по 3 часа)
         forecast_list = forecast_data.get("list", [])[:8]
         forecast_lines = [
-            f"{datetime.fromtimestamp(item['dt']).strftime('%H:%M')}:   "
+            f"{datetime.fromtimestamp(item['dt'], tz=tz).strftime('%H:%M')}:   "
             f"{round(item['main']['temp'], 1)}°C, {item['weather'][0]['description']}"
             for item in forecast_list
         ]
