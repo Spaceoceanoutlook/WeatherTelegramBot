@@ -70,7 +70,7 @@ def get_weather(message):
         ]
 
         weather_message = (
-            f"🏙️ Погода в {CITY}\n\n"
+            f"🏙️ Погода в {CITY}e\n\n"
             f"🌡️ Сейчас: {temp}°C\n"
             f"☁️ {description}\n"
             f"💧 Влажность: {humidity}%\n"
