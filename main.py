@@ -4,9 +4,10 @@ from zoneinfo import ZoneInfo
 
 import requests
 import telebot
+from telebot import types
 from dotenv import load_dotenv
 
-# Загрузка переменных окружения
+
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN", '')
@@ -17,8 +18,11 @@ LANG = 'ru'
 
 bot = telebot.TeleBot(TOKEN)
 
+bot.set_my_commands([
+    types.BotCommand("weather", "Получить прогноз"),
+])
+
 def fetch_weather(endpoint: str, params: dict):
-    """Запрос к OpenWeather API."""
     url = f"http://api.openweathermap.org/data/2.5/{endpoint}"
     try:
         response = requests.get(url, params=params, timeout=10)
@@ -31,8 +35,7 @@ def fetch_weather(endpoint: str, params: dict):
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message,
-        "🌤️ Я бот погоды для Екатеринбурга\n\n"
-        "Отправь /weather для получения прогноза")
+        "<b>Меню</b> ➡️ Получить прогноз", parse_mode="HTML")
 
 @bot.message_handler(commands=['weather'])
 def get_weather(message):
@@ -51,34 +54,28 @@ def get_weather(message):
         return
 
     try:
-        # Текущая погода
-        temp = round(current_data["main"]["temp"], 1)
+        temp = round(current_data["main"]["temp"])
         description = current_data["weather"][0]["description"].capitalize()
         humidity = current_data["main"]["humidity"]
-        pressure = current_data["main"]["pressure"]
 
         tz = ZoneInfo("Asia/Yekaterinburg")
         sunrise = datetime.fromtimestamp(current_data["sys"]["sunrise"], tz=tz).strftime('%H:%M')
         sunset = datetime.fromtimestamp(current_data["sys"]["sunset"], tz=tz).strftime('%H:%M')
 
-
-        # Прогноз на ближайшие 24 часа (8 интервалов по 3 часа)
-        forecast_list = forecast_data.get("list", [])[:8]
+        forecast_list = forecast_data.get("list", [])[:12]
         forecast_lines = [
-            f"{datetime.fromtimestamp(item['dt'], tz=tz).strftime('%H:%M')}:   "
-            f"{round(item['main']['temp'], 1)}°C, {item['weather'][0]['description']}"
+            f"{datetime.fromtimestamp(item['dt'], tz=tz).strftime('%H:%M')}: "
+            f"{round(item['main']['temp'])}°C, {item['weather'][0]['description']}"
             for item in forecast_list
         ]
 
-        # Финальное сообщение
         weather_message = (
             f"🏙️ Погода в {CITY}\n\n"
             f"🌡️ Сейчас: {temp}°C\n"
             f"☁️ {description}\n"
             f"💧 Влажность: {humidity}%\n"
-            f"📊 Давление: {pressure} гПа\n"
             f"🌅 Восход: {sunrise} | 🌇 Закат: {sunset}\n\n"
-            f"📅 Прогноз на 24 часа:\n" + "\n".join(forecast_lines)
+            f"📅 Прогноз на 36 часов:\n" + "\n".join(forecast_lines)
         )
 
         bot.reply_to(message, weather_message)
