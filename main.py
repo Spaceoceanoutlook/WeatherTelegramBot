@@ -7,6 +7,8 @@ import telebot
 from dotenv import load_dotenv
 from telebot import types
 
+from service import Counter
+
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN", "")
@@ -14,30 +16,16 @@ API_KEY = os.getenv("OPENWEATHER_API_KEY")
 CITY = "Екатеринбург"
 UNITS = "metric"
 LANG = "ru"
+counter = Counter()
 
 bot = telebot.TeleBot(TOKEN)
 
 bot.set_my_commands(
     [
         types.BotCommand("weather", "Получить прогноз"),
-        types.BotCommand("counter", "Количество просмотров"),
+        types.BotCommand("counter", "Счетчик просмотров"),
     ]
 )
-
-
-def count_request():
-    count = 0
-
-    def inner():
-        nonlocal count
-        count += 1
-        return count
-
-    inner.current = lambda: count
-    return inner
-
-
-counter = count_request()
 
 
 def fetch_weather(endpoint: str, params: dict):
@@ -58,7 +46,7 @@ def send_welcome(message):
 
 @bot.message_handler(commands=["counter"])
 def show_counter(message):
-    bot.reply_to(message, f"Просмотров погоды: {counter.current()}")
+    bot.reply_to(message, f"Общее количество просмотров погоды: {counter.get()}")
 
 
 @bot.message_handler(commands=["weather"])
