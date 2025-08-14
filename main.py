@@ -4,23 +4,41 @@ from zoneinfo import ZoneInfo
 
 import requests
 import telebot
-from telebot import types
 from dotenv import load_dotenv
-
+from telebot import types
 
 load_dotenv()
 
-TOKEN = os.getenv("TOKEN", '')
+TOKEN = os.getenv("TOKEN", "")
 API_KEY = os.getenv("OPENWEATHER_API_KEY")
-CITY = 'Екатеринбург'
-UNITS = 'metric'
-LANG = 'ru'
+CITY = "Екатеринбург"
+UNITS = "metric"
+LANG = "ru"
 
 bot = telebot.TeleBot(TOKEN)
 
-bot.set_my_commands([
-    types.BotCommand("weather", "Получить прогноз"),
-])
+bot.set_my_commands(
+    [
+        types.BotCommand("weather", "Получить прогноз"),
+        types.BotCommand("counter", "Количество просмотров"),
+    ]
+)
+
+
+def count_request():
+    count = 0
+
+    def inner():
+        nonlocal count
+        count += 1
+        return count
+
+    inner.current = lambda: count
+    return inner
+
+
+counter = count_request()
+
 
 def fetch_weather(endpoint: str, params: dict):
     url = f"http://api.openweathermap.org/data/2.5/{endpoint}"
@@ -32,19 +50,20 @@ def fetch_weather(endpoint: str, params: dict):
         print(f"Ошибка запроса к {endpoint}: {e}")
         return None
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message,
-        "<b>Меню</b> ➡️ Получить прогноз", parse_mode="HTML")
 
-@bot.message_handler(commands=['weather'])
+@bot.message_handler(commands=["start", "help"])
+def send_welcome(message):
+    bot.reply_to(message, "<b>Меню</b> ➡️ Получить прогноз", parse_mode="HTML")
+
+
+@bot.message_handler(commands=["counter"])
+def show_counter(message):
+    bot.reply_to(message, f"Просмотров погоды: {counter.current()}")
+
+
+@bot.message_handler(commands=["weather"])
 def get_weather(message):
-    params = {
-        'q': CITY,
-        'appid': API_KEY,
-        'units': UNITS,
-        'lang': LANG
-    }
+    params = {"q": CITY, "appid": API_KEY, "units": UNITS, "lang": LANG}
 
     current_data = fetch_weather("weather", params)
     forecast_data = fetch_weather("forecast", params)
@@ -59,8 +78,12 @@ def get_weather(message):
         humidity = current_data["main"]["humidity"]
 
         tz = ZoneInfo("Asia/Yekaterinburg")
-        sunrise = datetime.fromtimestamp(current_data["sys"]["sunrise"], tz=tz).strftime('%H:%M')
-        sunset = datetime.fromtimestamp(current_data["sys"]["sunset"], tz=tz).strftime('%H:%M')
+        sunrise = datetime.fromtimestamp(
+            current_data["sys"]["sunrise"], tz=tz
+        ).strftime("%H:%M")
+        sunset = datetime.fromtimestamp(current_data["sys"]["sunset"], tz=tz).strftime(
+            "%H:%M"
+        )
 
         forecast_list = forecast_data.get("list", [])[:12]
         forecast_lines = [
@@ -79,10 +102,12 @@ def get_weather(message):
         )
 
         bot.reply_to(message, weather_message)
+        counter()
 
     except Exception as e:
         bot.reply_to(message, f"⚠️ Произошла ошибка при обработке данных: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("🤖 Бот погоды Екатеринбурга запущен...")
     bot.infinity_polling()
